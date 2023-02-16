@@ -1,0 +1,6 @@
+GridPoint EC2K BOARD
+M:	Jon Ringle <jringle@gridpoint.com>
+S:	Maintained
+F:	board/gridpoint/ec2k/
+F:	include/configs/gridpoint-ec2k.h
+F:	configs/gridpoint_ec2k_defconfig

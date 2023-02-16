@@ -1,0 +1,523 @@
+/*
+ * gridpoint-ec2k.dts - Device Tree file for EC2000 board
+ * based on at91-sama5d27_som1_ek_common.dtsi
+ */
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include "sama5d27_som1.dtsi"
+/*
+#include <dt-bindings/mfd/atmel-flexcom.h>
+#include <dt-bindings/pinctrl/at91.h>
+#include <dt-bindings/dma/at91.h>
+*/
+
+/ {
+	model = "GridPoint EC2K";
+	compatible = "atmel,sama5d27-som1-ek", "atmel,sama5d27-som1", "atmel,sama5d27", "atmel,sama5d2", "atmel,sama5";
+
+	aliases {
+		serial0 = &uart1;
+		i2c0	= &i2c1;
+	};
+
+	chosen {
+		u-boot,dm-pre-reloc;
+		/* stdout-path = "serial0:115200n8"; */
+		stdout-path = &uart1;
+	};
+
+	ahb {
+
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		nfc_sram: sram@100000 {
+			compatible = "mmio-sram";
+			no-memory-wc;
+			reg = <0x00100000 0x2400>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x00100000 0x2400>;
+
+		};
+
+		nfc_io: nfc-io@c0000000 {
+			compatible = "atmel,sama5d3-nfc-io", "syscon";
+			reg = <0xc0000000 0x8000000>;
+		};
+
+		usb1: ohci@400000 {
+			num-ports = <3>;
+			atmel,vbus-gpio = <&pioA 42 0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usb_default>;
+			status = "okay";
+		};
+
+		usb2: ehci@500000 {
+			status = "okay";
+		};
+
+		sdmmc0: sdio-host@a0000000 {
+			status = "disabled";
+		};
+
+		sdmmc1: sdio-host@b0000000 {
+			bus-width = <4>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_sdmmc1_default>;
+			status = "okay";
+			u-boot,dm-pre-reloc;
+		};
+
+		hsmc: hsmc@f8014000 {
+			compatible = "atmel,sama5d2-smc", "syscon", "simple-mfd";
+			reg = <0xf8014000 0x1000>;
+			interrupts = <17 IRQ_TYPE_LEVEL_HIGH 6>;
+			clocks = <&pmc PMC_TYPE_PERIPHERAL 17>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			u-boot,dm-pre-reloc;
+
+			pmecc: ecc-engine@f8014070 {
+				compatible = "atmel,sama5d2-pmecc";
+				reg = <0xf8014070 0x490>,
+				      <0xf8014500 0x200>;
+			};
+		};
+
+		ebi: ebi@10000000 {
+			compatible = "atmel,sama5d3-ebi";
+			#address-cells = <2>;
+			#size-cells = <1>;
+			atmel,smc = <&hsmc>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_nand_default>;
+			reg = <0x10000000 0x10000000
+			       0x60000000 0x30000000>;
+			ranges = <0x0 0x0 0x10000000 0x10000000
+				  0x1 0x0 0x60000000 0x10000000
+				  0x2 0x0 0x70000000 0x10000000
+				  0x3 0x0 0x80000000 0x10000000>;
+			clocks = <&pmc PMC_TYPE_CORE ID_MAIN_RC_OSC>;
+			status = "disable"; /* conflicts with sdmmc1 and qspi0 */
+			u-boot,dm-pre-reloc;
+
+			nand_controller: nand-controller {
+				compatible = "atmel,sama5d3-nand-controller";
+				atmel,nfc-sram = <&nfc_sram>;
+				atmel,nfc-io = <&nfc_io>;
+				ecc-engine = <&pmecc>;
+				#address-cells = <2>;
+				#size-cells = <1>;
+				ranges;
+				status = "disable";
+
+				nand@3 {
+					reg = <0x3 0x0 0x2>;
+					atmel,rb = <0>;
+					nand-bus-width = <8>;
+					nand-ecc-mode = "hw";
+					nand-on-flash-bbt;
+					label = "atmel_nand";
+/*					u-boot,dm-pre-reloc; */
+
+					partitions {
+						compatible = "fixed-partitions";
+						#address-cells = <1>;
+						#size-cells = <1>;
+
+						rootfs@0 {
+							label = "NAND";
+							reg = <0x0 0x8000000>;
+						};
+					};
+				};
+			};
+		};
+
+		apb {
+			hlcdc: hlcdc@f0000000 {
+				status = "okay";
+
+				hlcdc-display-controller {
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_lcd_base &pinctrl_lcd_rgb>;
+
+					port {
+						hlcdc_panel_output: endpoint@0 {
+							remote-endpoint = <&panel_input>;
+						};
+					};
+				};
+
+				hlcdc_pwm: hlcdc-pwm {
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_lcd_pwm>;
+				};
+			};
+
+			pmc: pmc@f0014000 {
+				pmc_fast_restart {
+					compatible = "atmel,sama5d2-pmc-fast-startup";
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					atmel,wakeup-rtc-timer;
+
+					wkpin: input@0 {
+						reg = <0>;
+					};
+
+					gmac_wol: input@10 {
+						reg = <10>;
+						atmel,wakeup-active-high;
+					};
+				};
+			};
+
+			uart1: serial@f8020000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_uart1_default>;
+				status = "okay";
+				u-boot,dm-pre-reloc;
+			};
+
+			pwm0: pwm@f802c000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_mikrobus1_pwm &pinctrl_mikrobus2_pwm>;
+				status = "disabled"; /* Conflict with leds. */
+			};
+
+			shdwc@f8048010 {
+				atmel,shdwc-debouncer = <976>;
+				atmel,wakeup-rtc-timer;
+
+				input@0 {
+					reg = <0>;
+					atmel,wakeup-type = "low";
+				};
+			};
+
+			watchdog@f8048040 {
+				compatible = "atmel,at91sam9260-wdt";
+				status = "okay";
+			};
+
+			i2c0: i2c@f8028000 {
+				status = "disable";
+			};
+
+			i2c1: i2c@fc028000 {
+				status = "okay";
+
+				i2c1_eeprom: i2c1_eeprom@50 {
+					compatible = "atmel,24c02";
+					reg = <0x50>;
+				};
+			};
+
+			pinctrl@fc038000 {
+
+				pinctrl_qspi1_default: qspi1_default {
+					data {
+						bias-disabled;
+					};
+				};
+
+				pinctrl_lcd_base: pinctrl_lcd_base {
+					pinmux = <PIN_PC5__LCDVSYNC>,
+						<PIN_PC6__LCDHSYNC>,
+						<PIN_PC8__LCDDEN>,
+						<PIN_PC7__LCDPCK>;
+					bias-disable;
+				};
+
+				pinctrl_lcd_rgb: pinctrl_lcd_rgb {
+					pinmux = <PIN_PB11__LCDDAT0>,
+						<PIN_PB12__LCDDAT1>,
+						<PIN_PB13__LCDDAT2>,
+						<PIN_PB14__LCDDAT3>,
+						<PIN_PB15__LCDDAT4>,
+						<PIN_PB16__LCDDAT5>,
+						<PIN_PB17__LCDDAT6>,
+						<PIN_PB18__LCDDAT7>,
+						<PIN_PB19__LCDDAT8>,
+						<PIN_PB20__LCDDAT9>,
+						<PIN_PB21__LCDDAT10>,
+						<PIN_PB22__LCDDAT11>,
+						<PIN_PB23__LCDDAT12>,
+						<PIN_PB24__LCDDAT13>,
+						<PIN_PB25__LCDDAT14>,
+						<PIN_PB26__LCDDAT15>,
+						<PIN_PB27__LCDDAT16>,
+						<PIN_PB28__LCDDAT17>,
+						<PIN_PB29__LCDDAT18>,
+						<PIN_PB30__LCDDAT19>,
+						<PIN_PB31__LCDDAT20>,
+						<PIN_PC0__LCDDAT21>,
+						<PIN_PC1__LCDDAT22>,
+						<PIN_PC2__LCDDAT23>;
+					bias-disable;
+				};
+
+				pinctrl_nand_default: nand_default {
+					re_we_data {
+						pinmux = <PIN_PA0__D0>,
+							<PIN_PA1__D1>,
+							<PIN_PA2__D2>,
+							<PIN_PA3__D3>,
+							<PIN_PA4__D4>,
+							<PIN_PA5__D5>,
+							<PIN_PA6__D6>,
+							<PIN_PA7__D7>,
+							<PIN_PA8__NWE_NANDWE>,
+							<PIN_PA12__NRD_NANDOE>;
+							bias-pull-up;
+					};
+
+					ale_cle_rdy_cs {
+						pinmux = <PIN_PA10__A21_NANDALE>,
+							<PIN_PA11__A22_NANDCLE>,
+							<PIN_PD8__NANDRDY>,
+							<PIN_PA9__NCS3>;
+							bias-pull-up;
+					};
+				};
+
+				pinctrl_lcd_pwm: pinctrl_lcd_pwm {
+					pinmux = <PIN_PC3__LCDPWM>;
+					bias-disable;
+				};
+
+				pinctrl_flx3_default: flx3_default {
+					pinmux = <PIN_PC20__FLEXCOM3_IO0>,
+						 <PIN_PC19__FLEXCOM3_IO1>,
+						 <PIN_PC18__FLEXCOM3_IO2>,
+						 <PIN_PC21__FLEXCOM3_IO3>,
+						 <PIN_PC22__FLEXCOM3_IO4>;
+					bias-disable;
+				};
+
+				pinctrl_i2c1_default: i2c1_default {
+					pinmux = <PIN_PD4__TWD1>,
+						 <PIN_PD5__TWCK1>;
+					bias-disable;
+				};
+
+				pinctrl_led_gpio_default: led_gpio_default {
+					pinmux = <PIN_PA31__GPIO>;
+					bias-pull-up;
+				};
+
+				pinctrl_backlight_gpio_default: backlight_gpio_default {
+					pinmux = <PIN_PA15__GPIO>;
+					bias-disable;
+					output-high;
+				};
+
+				pinctrl_sdmmc1_default: sdmmc1_default {
+					cmd_data {
+						pinmux = <PIN_PA28__SDMMC1_CMD>,
+							 <PIN_PA18__SDMMC1_DAT0>,
+							 <PIN_PA19__SDMMC1_DAT1>,
+							 <PIN_PA20__SDMMC1_DAT2>,
+							 <PIN_PA21__SDMMC1_DAT3>;
+						bias-disable;
+					};
+
+					conf-ck_cd {
+						pinmux = <PIN_PA22__SDMMC1_CK>,
+							 <PIN_PA30__SDMMC1_CD>;
+						bias-disable;
+					};
+				};
+
+				pinctrl_usb_default: usb_default {
+					pinmux = <PIN_PA27__GPIO>,
+						 <PIN_PD19__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_usba_vbus: usba_vbus {
+					pinmux = <PIN_PD20__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_uart1_default: uart1_default {
+					pinmux = <PIN_PD2__URXD1>,
+						<PIN_PD3__UTXD1>;
+						bias-disable;
+						u-boot,dm-pre-reloc;
+				};
+
+				pinctrl_mikrobus1_an: mikrobus1_an {
+					pinmux = <PIN_PD25__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus2_an: mikrobus2_an {
+					pinmux = <PIN_PD26__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus1_rst: mikrobus1_rst {
+					pinmux = <PIN_PB2__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus2_rst: mikrobus2_rst {
+					pinmux = <PIN_PA26__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus1_spi_cs: mikrobus1_spi_cs {
+					pinmux = <PIN_PD0__FLEXCOM4_IO4>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus2_spi_cs: mikrobus2_spi_cs {
+					pinmux = <PIN_PC31__FLEXCOM4_IO3>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus_spi: mikrobus_spi {
+					pinmux = <PIN_PC28__FLEXCOM4_IO0>,
+						 <PIN_PC29__FLEXCOM4_IO1>,
+						 <PIN_PC30__FLEXCOM4_IO2>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus1_pwm: mikrobus1_pwm {
+					pinmux = <PIN_PB1__PWML1>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus2_pwm: mikrobus2_pwm {
+					pinmux = <PIN_PA31__PWML0>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus1_int: mikrobus1_int {
+					pinmux = <PIN_PB0__GPIO>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus1_uart: mikrobus1_uart {
+					pinmux = <PIN_PB3__URXD4>,
+						 <PIN_PB4__UTXD4>;
+					bias-disable;
+				};
+
+				pinctrl_mikrobus2_uart: mikrobus2_uart {
+					pinmux = <PIN_PD23__URXD2>,
+						 <PIN_PD24__UTXD2>;
+					bias-disable;
+				};
+
+				pinctrl_flx4_default: flx4_uart_default {
+					pinmux = <PIN_PC28__FLEXCOM4_IO0>,
+						 <PIN_PC29__FLEXCOM4_IO1>,
+						 <PIN_PC30__FLEXCOM4_IO2>,
+						 <PIN_PC31__FLEXCOM4_IO3>,
+						 <PIN_PD0__FLEXCOM4_IO4>;
+					bias-disable;
+				};
+
+				pinctrl_flx2_default: flx2_uart_default {
+					pinmux = <PIN_PD26__FLEXCOM2_IO0>,
+						 <PIN_PD27__FLEXCOM2_IO1>,
+						 <PIN_PD28__FLEXCOM2_IO2>,
+						 <PIN_PD29__FLEXCOM2_IO3>,
+						 <PIN_PD30__FLEXCOM2_IO4>;
+					bias-disable;
+				};
+			};
+
+			adc: adc@fc030000 {
+				vddana-supply = <&vddana>;
+				vref-supply = <&advref>;
+				status = "okay";
+			};
+			resistive_touch: resistive-touch {
+				status = "okay";
+			};
+
+		};
+	};
+
+	vddin_3v3: fixed-regulator-vddin_3v3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VDDIN_3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		status = "okay";
+	};
+
+	vddana: fixed-regulator-vddana {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VDDANA";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&vddin_3v3>;
+		status = "okay";
+	};
+
+	advref: fixed-regulator-advref {
+		compatible = "regulator-fixed";
+
+		regulator-name = "advref";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&vddana>;
+		status = "okay";
+	};
+
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_backlight_gpio_default>;
+		gpios = <&pioA PIN_PA15 GPIO_ACTIVE_HIGH>;
+
+		default-on;
+		status = "okay";
+	};
+
+	panel: panel {
+		compatible = "olimex,lcd-olinuxino-43-ts", "simple-panel";
+
+		backlight = <&backlight>;
+		status = "okay";
+
+		port {
+			panel_input: endpoint@0 {
+				remote-endpoint = <&hlcdc_panel_output>;
+			};
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_led_gpio_default>;
+		status = "okay"; /* Conflict with pwm0. */
+
+		blue {
+			label = "blue";
+			gpios = <&pioA PIN_PA31 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+};
