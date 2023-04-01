@@ -997,6 +997,8 @@ dtb-$(CONFIG_TARGET_GARDENA_SMART_GATEWAY_AT91SAM) += \
 
 dtb-$(CONFIG_TARGET_GRIDPOINT_EC2K) += gridpoint-ec2k.dtb
 
+dtb-$(CONFIG_TARGET_GRIDPOINT_EDGE) += gridpoint-edge.dtb
+
 dtb-$(CONFIG_TARGET_ETHERNUT5) += ethernut5.dtb
 
 dtb-$(CONFIG_TARGET_USB_A9263) += usb_a9263.dtb

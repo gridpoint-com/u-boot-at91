@@ -166,6 +166,16 @@ config TARGET_GRIDPOINT_EC2K
 	help
 	  GridPoint EC2K board based on SAMA5D27_SOM1_EK
 
+config TARGET_GRIDPOINT_EDGE
+	bool "GridPoint EDGE board"
+	select BOARD_EARLY_INIT_F
+	select BOARD_LATE_INIT
+	select CPU_V7A
+	select SUPPORT_SPL
+	select SAMA5D2
+	help
+	  GridPoint EDGE board based on SAMA5D27_SOM1_WLSOM_EK
+
 config TARGET_SAM9X60EK
 	bool "SAM9X60-EK board"
 	select SAM9X60
@@ -350,6 +360,7 @@ source "board/egnite/ethernut5/Kconfig"
 source "board/esd/meesc/Kconfig"
 source "board/gardena/smart-gateway-at91sam/Kconfig"
 source "board/gridpoint/ec2k/Kconfig"
+source "board/gridpoint/edge/Kconfig"
 source "board/l+g/vinco/Kconfig"
 source "board/ronetix/pm9261/Kconfig"
 source "board/ronetix/pm9263/Kconfig"
