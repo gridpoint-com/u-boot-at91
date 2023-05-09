@@ -19,6 +19,14 @@
 	};
 
 	ahb {
+		usb1: ohci@400000 {
+			status = "okay";
+		};
+
+		usb2: ehci@500000 {
+			status = "disabled";
+		};
+
 		sdmmc0: sdio-host@a0000000 {
 			bus-width = <4>;
 			pinctrl-names = "default";
@@ -29,6 +37,46 @@
 		apb {
 			qspi1: spi@f0024000 {
 				status = "okay";
+
+                qspi1_flash: spi_flash@0 {
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+                    bootstrap@0 {
+                        label = "at91bootstrap";
+                        reg = <0x00000000 0x00004000>;
+                    };
+
+                    bootloaderenva@4000 {
+                        label = "UBootENV";
+                        reg = <0x00004000 0x00008000>;
+                    };
+
+                    bootloader@c000 {
+                        label = "U-Boot";
+                        reg = <0x0000c000 0x000a2000>;
+                    };
+
+                    dtba@ae000 {
+                        label = "DTB-A";
+                        reg = <0x000ae000 0x00009000>;
+                    };
+
+                    dtbb@b7000 {
+                        label = "DTB-B";
+                        reg = <0x000b7000 0x00009000>;
+                    };
+
+                    kernela@c0000 {
+                        label = "Kernel-A";
+                        reg = <0x000c0000 0x003a0000>;
+                    };
+
+                    kernelb@460000 {
+                        label = "Kernel-B";
+                        reg = <0x00460000 0x003a0000>;
+                    };
+                };
 			};
 
 			macb0: ethernet@f8008000 {
@@ -42,11 +90,12 @@
 				u-boot,dm-pre-reloc;
 			};
 
+/*
 			i2c1: i2c@fc028000 {
 				status = "okay";
 				u-boot,dm-pre-reloc;
 			};
-
+*/
 			pioA: pinctrl@fc038000 {
 				pinctrl_lcd_base: pinctrl_lcd_base {
 					pinmux = <PIN_PC30__LCDVSYNC>,
@@ -116,4 +165,8 @@
 			};
 		};
 	};
+};
+
+&i2c1 {
+	status = "okay";
 };
